@@ -53,6 +53,7 @@ tr.ft td,tr:last-child td{font-weight:700}
 <style>th{position:relative}.rz{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;z-index:4}.rz:after{content:"";position:absolute;right:4px;top:30%;bottom:30%;width:1px;background:#888}.rz:hover:after{background:var(--gold);width:2px}</style><div id="gate"><form onsubmit="go(event)"><h1>BVG Distributions Tracker</h1><p class="muted">Enter password</p><input id="pw" type="password" autofocus><button>Open</button><div id="err" class="neg"></div></form></div>
 <div class="top"><div class="wrap"><h1>BVG Distributions Tracker</h1><div class="muted" id="gen"></div></div></div>
 <div class="wrap" id="app" style="display:none">
+<h2 id="cqh">Current Quarter Distributions</h2><div class="muted" id="cqn" style="font-size:12px;margin-bottom:8px"></div><div class="cards" id="cqc"></div><div class="scroll" id="tCQ"></div>
 <h2>Summary</h2><div class="cards" id="cards"></div>
 <h2>By Investment</h2><div class="scroll" id="tI"></div>
 <h2>By Year</h2><div class="scroll" id="tY"></div>
@@ -67,7 +68,13 @@ async function decrypt(pw){const e=await (await fetch('data.enc.json',{cache:'no
  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(e.salt),iterations:e.iter,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(e.iv)},key,b64(e.ct))));}
 function tbl(id,h,rows,foot){document.getElementById(id).innerHTML='<table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+(foot?'<tr class="ft">'+foot.map(c=>'<td>'+c+'</td>').join('')+'</tr>':'')+'</table>';}
-function render(d){document.getElementById('gen').textContent='Updated '+d.generated;const R=d.rows,Y=R.filter(r=>r[5]);
+function cq(d){const n=new Date(),Q=Math.floor(n.getMonth()/3),y=n.getFullYear(),s=`${y}-${String(Q*3+1).padStart(2,'0')}-01`,e=Q==3?`${y+1}-01-01`:`${y}-${String(Q*3+4).padStart(2,'0')}-01`;
+ const D=(d.dep||[]).filter(r=>r[1]>=s&&r[1]<e),inc=D.reduce((a,r)=>a+r[3],0),roc=D.reduce((a,r)=>a+r[4],0),got=new Set(D.map(r=>r[0])),miss=(d.exp||[]).filter(x=>!got.has(x));
+ document.getElementById('cqh').textContent=`Current Quarter Distributions — Q${Q+1} ${y}`;
+ document.getElementById('cqn').textContent=`Deposits received ${s} to today, by bank deposit date. $ only. `+(miss.length?'Not yet received this quarter: '+miss.join(', ')+'.':'All positions received.');
+ document.getElementById('cqc').innerHTML=[['Total received',$(inc+roc)],['Income',$(inc)],['Return of capital',$(roc)],['Deposits',D.length]].map(x=>`<div class="card"><div class="l">${x[0]}</div><div class="v">${x[1]}</div></div>`).join('');
+ tbl('tCQ',['Investment','Deposit date','For period','Income','Return of capital','Total'],D.map(r=>[r[0],r[1],r[2],$(r[3]),r[4]?$(r[4]):'–',$(r[3]+r[4])]),['TOTAL','','',$(inc),$(roc),$(inc+roc)]);}
+function render(d){cq(d);document.getElementById('gen').textContent='Updated '+d.generated;const R=d.rows,Y=R.filter(r=>r[5]);
  const tot=R.reduce((a,r)=>a+r[3],0),roc=R.reduce((a,r)=>a+r[4],0);
  const avg=Y.reduce((a,r)=>a+r[7],0)/Y.length; // simple avg of annualized quarterly yields
  const inv={};Y.forEach(r=>inv[r[0]]=Math.max(inv[r[0]]||0,r[5]));const ti=Object.values(inv).reduce((a,b)=>a+b,0);
