@@ -57,7 +57,7 @@ tr.ft td,tr:last-child td{font-weight:700}
 <h2>Summary</h2><div class="cards" id="cards"></div>
 <h2>By Investment</h2><div class="scroll" id="tI"></div>
 <h2>By Year</h2><div class="scroll" id="tY"></div>
-<h2>Quarterly Distributions</h2><div class="muted" style="font-size:12px;margin-bottom:8px">Quarterly % = income distribution ÷ capital invested at the time. Annualized = quarterly × 4. * = first (partial) quarter. B-shares show $ only and are excluded from yields. Return of capital is not counted as income.</div><div class="scroll" id="tQ"></div>
+<h2>Quarterly Distributions</h2><div class="muted" style="font-size:12px;margin-bottom:8px">Quarterly % = full distribution (income + return of capital) ÷ capital invested at the time. Annualized = quarterly × 4. * = first (partial) quarter. B-shares show $ only and are excluded from yields. Return of capital is not counted as income.</div><div class="scroll" id="tQ"></div>
 <h2>Gaps / Unverified</h2><ul id="gaps" class="muted"></ul><br></div>
 <script>
 const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -73,17 +73,17 @@ function cq(d){const n=new Date(),Q=Math.floor(n.getMonth()/3),y=n.getFullYear()
  document.getElementById('cqh').textContent=`Current Quarter Distributions — Q${Q+1} ${y}`;
  document.getElementById('cqn').textContent=`Deposits received ${s} to today, by bank deposit date. $ only. `+(miss.length?'Not yet received this quarter: '+miss.join(', ')+'.':'All positions received.');
  document.getElementById('cqc').innerHTML=[['Total received',$(inc+roc)],['Income',$(inc)],['Return of capital',$(roc)],['Deposits',D.length]].map(x=>`<div class="card"><div class="l">${x[0]}</div><div class="v">${x[1]}</div></div>`).join('');
- tbl('tCQ',['Investment','Deposit date','For period','Income','Return of capital','Total'],D.map(r=>[r[0],r[1],r[2],$(r[3]),r[4]?$(r[4]):'–',$(r[3]+r[4])]),['TOTAL','','',$(inc),$(roc),$(inc+roc)]);}
+ const IV={};(d.rows||[]).forEach(r=>{if(r[5])IV[r[0]]=r[5]});tbl('tCQ',['Investment','Deposit date','For period','Income','Return of capital','Total','Invested','% of investment'],D.map(r=>{const v=/B-share/.test(r[0])?null:IV[r[0]];return[r[0],r[1],r[2],$(r[3]),r[4]?$(r[4]):'–',$(r[3]+r[4]),$(v),v?p((r[3]+r[4])/v*100):'–']}),['TOTAL','','',$(inc),$(roc),$(inc+roc),'','']);}
 function render(d){cq(d);document.getElementById('gen').textContent='Updated '+d.generated;const R=d.rows,Y=R.filter(r=>r[5]);
  const tot=R.reduce((a,r)=>a+r[3],0),roc=R.reduce((a,r)=>a+r[4],0);
  const avg=Y.reduce((a,r)=>a+r[7],0)/Y.length; // simple avg of annualized quarterly yields
  const inv={};Y.forEach(r=>inv[r[0]]=Math.max(inv[r[0]]||0,r[5]));const ti=Object.values(inv).reduce((a,b)=>a+b,0);
  document.getElementById('cards').innerHTML=[['Total income distributions',$(tot)],['Return of capital',$(roc)],['Capital invested',$(ti)],['Avg annualized yield',p(avg)]].map(x=>`<div class="card"><div class="l">${x[0]}</div><div class="v">${x[1]}</div></div>`).join('');
  const I={};R.forEach(r=>{const o=I[r[0]]=I[r[0]]||{n:0,s:0,roc:0,y:[],inv:r[5]};o.n++;o.s+=r[3];o.roc+=r[4];if(r[5])o.y.push(r[7]);if(r[5])o.inv=Math.max(o.inv||0,r[5])});
- tbl('tI',['Investment','Quarters','Income distributions','Return of capital','Invested','Total % of investment','Avg annualized %'],Object.entries(I).map(([k,o])=>[k,o.n,$(o.s),$(o.roc),$(o.inv),o.inv?p(o.s/o.inv*100):'–',o.y.length?p(o.y.reduce((a,b)=>a+b,0)/o.y.length):'–']),['TOTAL',R.length,$(tot),$(roc),$(ti),'–',p(avg)]);
+ tbl('tI',['Investment','Quarters','Income distributions','Return of capital','Invested','Total % of investment','Avg annualized %'],Object.entries(I).map(([k,o])=>[k,o.n,$(o.s),$(o.roc),$(o.inv),o.inv?p((o.s+o.roc)/o.inv*100):'–',o.y.length?p(o.y.reduce((a,b)=>a+b,0)/o.y.length):'–']),['TOTAL',R.length,$(tot),$(roc),$(ti),'–',p(avg)]);
  const YR={};R.forEach(r=>{const y=r[2].slice(0,4),o=YR[y]=YR[y]||{s:0,ys:0,yi:{}};o.s+=r[3];if(r[5]){o.ys+=r[3];o.yi[r[0]]=Math.max(o.yi[r[0]]||0,r[5])}});
  tbl('tY',['Year','Income distributions','Yield-eligible income','Invested (max in year)','% of investment'],Object.keys(YR).sort().map(y=>{const o=YR[y],iv=Object.values(o.yi).reduce((a,b)=>a+b,0);return[y,$(o.s),$(o.ys),$(iv),iv?p(o.ys/iv*100):'–']}),['TOTAL',$(tot),'','','']);
- tbl('tQ',['Investment','Quarter','Date','Amount','Return of capital','Invested','Quarterly %','Annualized %'],R.map(r=>[r[0],r[1]+(r[8]=='b'?'*':''),r[2],$(r[3]),r[4]?$(r[4]):'–',$(r[5]),p(r[6]),p(r[7])]));
+ tbl('tQ',['Investment','Quarter','Date','Income','Return of capital','Total distribution','Invested','Quarterly %','Annualized %'],R.map(r=>[r[0],r[1]+(r[8]=='b'?'*':''),r[2],$(r[3]),r[4]?$(r[4]):'–',$(r[3]+r[4]),$(r[5]),p(r[6]),p(r[7])]));
  document.getElementById('gaps').innerHTML=d.gaps.map(g=>'<li>'+g+'</li>').join('');}
 async function go(e){e.preventDefault();try{const d=await decrypt(document.getElementById('pw').value);document.getElementById('gate').remove();document.getElementById('app').style.display='';render(d);rz()}catch(x){document.getElementById('err').textContent='Wrong password'}}
 function rz(){document.querySelectorAll('table').forEach(t=>{t.style.tableLayout='auto';t.querySelectorAll('th').forEach(th=>{if(th.querySelector('.rz'))return;const h=document.createElement('span');h.className='rz';h.title='Drag to resize';th.appendChild(h);h.addEventListener('click',e=>e.stopPropagation());h.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const x0=e.clientX,w0=th.offsetWidth;h.setPointerCapture(e.pointerId);const mv=ev=>{const w=Math.max(40,w0+ev.clientX-x0)+'px';th.style.width=w;th.style.minWidth=w};h.addEventListener('pointermove',mv);h.addEventListener('pointerup',()=>h.removeEventListener('pointermove',mv),{once:true})})})})}
